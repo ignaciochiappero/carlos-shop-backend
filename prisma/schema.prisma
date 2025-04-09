@@ -1,0 +1,100 @@
+//backend\prisma\schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Roles {
+  ADMIN
+  USER
+}
+
+model User {
+  id        String     @id @default(uuid())
+  email     String     @unique
+  userName  String
+  cognitoId String     @unique // Añadimos este campo
+  password  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  role      Roles      @default(USER)
+  cart      CartItem[]
+  wishlist  WishItem[]
+  orders    Order[]
+}
+
+model Product {
+  id          String     @id @default(uuid())
+  name        String
+  image       String?     @db.Text
+  description String
+  price       Float
+  stock       Int        @default(0)
+  cartItems   CartItem[]
+  wishItems   WishItem[]
+  orderItems  OrderItem[]
+}
+
+model CartItem {
+  id        String   @id @default(uuid())
+  quantity  Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+
+  @@unique([userId, productId])
+}
+
+model WishItem {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Coupon {
+
+  id        String    @id @default(uuid())
+  code      String    @unique
+  discount  Float     // Percentage discount (e.g., 10 = 10%)
+  isActive  Boolean   @default(true)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Order {
+  id          String    @id @default(uuid())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  items       OrderItem[] 
+  total       Float
+  discount    Float?    // Total discount applied
+  finalTotal  Float     // Total order
+  status      String    @default("pending") // Status: pending, paid, shipped, cancelled
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  paymentMethod String
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId    String
+  cartItem    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  quantity   Int
+  price      Float    
+}
