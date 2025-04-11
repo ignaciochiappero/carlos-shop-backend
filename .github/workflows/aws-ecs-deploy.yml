@@ -1,4 +1,4 @@
-name: Deploy to Amazon ECS
+name: Deploy Backend to Amazon ECS
 
 on:
   push:
@@ -6,11 +6,11 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: carlos-shop-back-2
-  ECS_SERVICE: carlos-shop-backend-service
+  ECR_REPOSITORY: carlos-shop-back
+  ECS_SERVICE: servicio-backend-carlosshop
   ECS_CLUSTER: carlos-shop-backend
-  ECS_TASK_DEFINITION: carlos-shop-backend-task
-  CONTAINER_NAME: carlos-shop-container-back
+  ECS_TASK_DEFINITION: tarea-backend-carlos-shop
+  CONTAINER_NAME: contenedor-backend-carlos-shop
 
 jobs:
   deploy:
@@ -38,15 +38,10 @@ jobs:
         ECR_REGISTRY: 588738568763.dkr.ecr.us-east-1.amazonaws.com
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        # Construir imagen de Docker
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        
-        # Subir la imagen a ECR
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-        
-        # Guardar la URI de la imagen para usar en la definición de tarea
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: Download current task definition
@@ -57,8 +52,7 @@ jobs:
 
     - name: Remove unsupported fields from task definition
       run: |
-        # Usar jq para eliminar el campo enableFaultInjection si existe
-        jq 'del(.enableFaultInjection)' task-definition.json > cleaned-task-definition.json
+        jq 'del(.enableFaultInjection) | del(.status) | del(.compatibilities) | del(.taskDefinitionArn) | del(.requiresAttributes) | del(.revision)' task-definition.json > cleaned-task-definition.json
         mv cleaned-task-definition.json task-definition.json
         cat task-definition.json
 
@@ -77,3 +71,48 @@ jobs:
         service: ${{ env.ECS_SERVICE }}
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
+        
+    # NUEVO: Capturar la IP del backend después del despliegue
+    - name: Get new backend IP
+      id: get-backend-ip
+      run: |
+        # Esperar un momento para asegurarnos que la tarea esté estable
+        sleep 20
+        
+        # Obtener el ARN de la tarea en ejecución
+        TASK_ARN=$(aws ecs list-tasks --cluster ${{ env.ECS_CLUSTER }} --service-name ${{ env.ECS_SERVICE }} --query 'taskArns[0]' --output text)
+        
+        # Describir la tarea para obtener la ENI (interfaz de red)
+        TASK_DETAILS=$(aws ecs describe-tasks --cluster ${{ env.ECS_CLUSTER }} --tasks $TASK_ARN)
+        
+        # Extraer el ENI ID
+        ENI_ID=$(echo $TASK_DETAILS | jq -r '.tasks[0].attachments[0].details[] | select(.name == "networkInterfaceId") | .value')
+        
+        # Obtener la IP pública de la interfaz de red
+        PUBLIC_IP=$(aws ec2 describe-network-interfaces --network-interface-ids $ENI_ID --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+        
+        # Guardar la IP pública como una output variable
+        echo "backend_ip=$PUBLIC_IP" >> $GITHUB_OUTPUT
+        echo "Backend IP: $PUBLIC_IP"
+        
+        # Guardar la IP en un archivo
+        mkdir -p artifacts
+        echo $PUBLIC_IP > artifacts/backend_ip.txt
+
+    - name: Upload IP as artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: backend-ip
+        path: artifacts/backend_ip.txt
+        retention-days: 1
+
+    # NUEVO: Trigger del workflow del frontend
+    - name: Trigger frontend workflow
+      run: |
+        BACKEND_IP=$(cat artifacts/backend_ip.txt)
+        
+        curl -X POST \
+          -H "Accept: application/vnd.github.v3+json" \
+          -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
+          https://api.github.com/repos/${{ github.repository_owner }}/carlos-shop-frontend/actions/workflows/frontend-deploy.yml/dispatches \
+          -d '{"ref": "main", "inputs": {"backend_ip": "'"http://$BACKEND_IP:3000"'"}}'
