@@ -1,4 +1,3 @@
-#backend\Dockerfile
 # Etapa de construcción para el backend
 FROM node:20-alpine AS builder
 

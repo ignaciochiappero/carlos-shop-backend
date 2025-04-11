@@ -6,11 +6,11 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: carlos-shop-back
-  ECS_SERVICE: servicio-backend-carlosshop
+  ECR_REPOSITORY: carlos-shop-back-2
+  ECS_SERVICE: service-carlos-shop-back
   ECS_CLUSTER: carlos-shop-backend
-  ECS_TASK_DEFINITION: tarea-backend-carlos-shop
-  CONTAINER_NAME: contenedor-backend-carlos-shop
+  ECS_TASK_DEFINITION: task-carlos-shop-back
+  CONTAINER_NAME: container-carlos-shop-back
 
 jobs:
   deploy:
@@ -38,10 +38,15 @@ jobs:
         ECR_REGISTRY: 588738568763.dkr.ecr.us-east-1.amazonaws.com
         IMAGE_TAG: ${{ github.sha }}
       run: |
+        # Construir imagen de Docker
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        # Subir la imagen a ECR
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        # Guardar la URI de la imagen para usar en la definición de tarea
         echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
     - name: Download current task definition
@@ -52,6 +57,7 @@ jobs:
 
     - name: Remove unsupported fields from task definition
       run: |
+        # Usar jq para eliminar campos no soportados
         jq 'del(.enableFaultInjection) | del(.status) | del(.compatibilities) | del(.taskDefinitionArn) | del(.requiresAttributes) | del(.revision)' task-definition.json > cleaned-task-definition.json
         mv cleaned-task-definition.json task-definition.json
         cat task-definition.json
@@ -72,7 +78,7 @@ jobs:
         cluster: ${{ env.ECS_CLUSTER }}
         wait-for-service-stability: true
         
-    # NUEVO: Capturar la IP del backend después del despliegue
+    # Capturar la IP del backend después del despliegue
     - name: Get new backend IP
       id: get-backend-ip
       run: |
@@ -99,14 +105,15 @@ jobs:
         mkdir -p artifacts
         echo $PUBLIC_IP > artifacts/backend_ip.txt
 
+    # Usar la versión actualizada de la acción
     - name: Upload IP as artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: backend-ip
         path: artifacts/backend_ip.txt
         retention-days: 1
 
-    # NUEVO: Trigger del workflow del frontend
+    # Disparar el workflow de frontend con la IP como input
     - name: Trigger frontend workflow
       run: |
         BACKEND_IP=$(cat artifacts/backend_ip.txt)
