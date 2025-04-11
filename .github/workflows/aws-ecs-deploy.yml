@@ -112,7 +112,12 @@ jobs:
         name: backend-ip
         path: artifacts/backend_ip.txt
         retention-days: 1
-
+    
+    - name: Debug backend IP
+      run: |
+        BACKEND_IP=$(cat artifacts/backend_ip.txt)
+        echo "Backend IP a enviar al frontend: http://$BACKEND_IP:3000"
+        
     # Disparar el workflow de frontend con la IP como input
     - name: Trigger frontend workflow
       run: |
