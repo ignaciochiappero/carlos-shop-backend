@@ -105,9 +105,9 @@ jobs:
         mkdir -p artifacts
         echo $PUBLIC_IP > artifacts/backend_ip.txt
 
-    # Usar la versión actualizada de la acción
+    # ACTUALIZADO: Usar actions/upload-artifact@v4 en vez de v3
     - name: Upload IP as artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: backend-ip
         path: artifacts/backend_ip.txt
