@@ -15,7 +15,7 @@ import { PrismaService } from '../prismaendpoint/prisma.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
-import { CloudinaryService } from 'src/files/files.service';
+import { CloudinaryService } from '../files/files.service';
 
 @Injectable()
 export class ProductsService {

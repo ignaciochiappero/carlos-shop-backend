@@ -1,7 +1,7 @@
 //backend\src\products\products.module.ts
 
 import { Module } from '@nestjs/common';
-import { ProductsService } from './product.service';
+import { ProductsService } from './products.service';
 import { ProductsController } from './products.controller';
 import { PrismaService } from '../prismaendpoint/prisma.service';
 import { CloudinaryService } from 'src/files/files.service';

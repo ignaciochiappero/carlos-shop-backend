@@ -4,9 +4,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { CartService } from '../cart/cart.service';
-import { CouponService } from 'src/coupons/coupons.service';
+import { CouponService } from '../coupons/coupons.service';
 import { CheckoutDto } from './dto/create-checkout.dto';
-import { PrismaService } from 'src/prismaendpoint/prisma.service';
+import { PrismaService } from '../prismaendpoint/prisma.service';
 
 @Injectable()
 export class CheckoutService {
