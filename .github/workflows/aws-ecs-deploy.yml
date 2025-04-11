@@ -6,11 +6,11 @@ on:
 
 env:
   AWS_REGION: us-east-1
-  ECR_REPOSITORY: carlos-shop-back-2
-  ECS_SERVICE: service-carlos-shop-back
+  ECR_REPOSITORY: carlos-shop-back
+  ECS_SERVICE: servicio-backend-carlosshop
   ECS_CLUSTER: carlos-shop-backend
-  ECS_TASK_DEFINITION: task-carlos-shop-back
-  CONTAINER_NAME: container-carlos-shop-back
+  ECS_TASK_DEFINITION: tarea-backend-carlos-shop
+  CONTAINER_NAME: contenedor-backend-carlos-shop
 
 jobs:
   deploy:
