@@ -1,4 +1,4 @@
-// src/app.module.ts
+// backend\src\app.module.ts
 
 import { Module } from '@nestjs/common';
 import { PrismaModule } from './prismaendpoint/prisma.module';

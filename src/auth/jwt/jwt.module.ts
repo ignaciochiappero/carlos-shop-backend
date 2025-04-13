@@ -1,3 +1,5 @@
+//backend\src\auth\jwt\jwt.module.ts
+
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { JwtAuthGuard } from '../jwt-auth.guard';

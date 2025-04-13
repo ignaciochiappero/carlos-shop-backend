@@ -1,3 +1,5 @@
+//backend\src\config\jwt.config.ts
+
 import { JwtModuleOptions } from '@nestjs/jwt';
 
 export const jwtConfig: JwtModuleOptions = {

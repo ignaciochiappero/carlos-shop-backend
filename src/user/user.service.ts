@@ -1,3 +1,5 @@
+//backend\src\user\user.service.ts
+
 import {
   Injectable,
   BadRequestException,
@@ -70,17 +72,35 @@ export class UserService {
 
   async getUserByCognitoId(cognitoId: string) {
     try {
-      const user = await this.prisma.user.findUnique({ where: { cognitoId } });
+      console.log(`Buscando usuario con cognitoId: ${cognitoId}`);
+      
+      const user = await this.prisma.user.findUnique({ 
+        where: { cognitoId },
+        // Asegúrate de seleccionar todos los campos necesarios
+        select: {
+          id: true,
+          email: true,
+          userName: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+          cognitoId: true
+        }
+      });
+      
       if (!user) {
-        throw new NotFoundException(
-          `User with Cognito ID ${cognitoId} not found`,
-        );
+        console.log(`No se encontró usuario con cognitoId: ${cognitoId}`);
+        throw new NotFoundException(`Usuario con ID de Cognito ${cognitoId} no encontrado`);
       }
+      
+      console.log(`Usuario encontrado: ${user.id}`);
       return user;
     } catch (error) {
-      throw new InternalServerErrorException(
-        'Error fetching user by Cognito ID',
-      );
+      console.error(`Error al buscar usuario por cognitoId ${cognitoId}:`, error);
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException('Error al buscar usuario por ID de Cognito');
     }
   }
 

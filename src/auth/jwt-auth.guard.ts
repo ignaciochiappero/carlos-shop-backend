@@ -29,6 +29,11 @@ export class JwtAuthGuard implements CanActivate {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+
+    
+
+
+
     const request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
 
@@ -64,6 +69,19 @@ export class JwtAuthGuard implements CanActivate {
       const verified: any = jwt.verify(token, pem, {
         issuer: this.cognitoIssuer,
         algorithms: ['RS256'],
+      });
+
+      // Agregar el usuario decodificado a la solicitud
+      request.user = {
+        sub: verified.sub,
+        email: verified.email,
+        username: verified['cognito:username'],
+      };
+
+      console.log('Usuario extraído del token:', {
+        sub: verified.sub,
+        email: verified.email,
+        username: verified['cognito:username'],
       });
 
       // Agregar el usuario decodificado a la solicitud
