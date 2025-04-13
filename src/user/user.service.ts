@@ -1,5 +1,13 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { PrismaService } from 'src/prismaendpoint/prisma.service';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ConflictException,
+  InternalServerErrorException,
+} from '@nestjs/common';
+import { PrismaService } from '../prismaendpoint/prisma.service';
+import { Prisma } from '@prisma/client';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class UserService {
@@ -26,42 +34,52 @@ export class UserService {
         },
       });
     } catch (error) {
-      throw new HttpException(
-        'Error creating user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Email or CognitoId already exists');
+      }
+      throw new InternalServerErrorException('Error creating user');
     }
   }
 
   async getUserById(id: string) {
     try {
-      return await this.prisma.user.findUnique({ where: { id } });
+      const user = await this.prisma.user.findUnique({ where: { id } });
+      if (!user) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      return user;
     } catch (error) {
-      throw new HttpException(
-        'Error fetching user by ID',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error fetching user by ID');
     }
   }
 
   async getUserByEmail(email: string) {
     try {
-      return await this.prisma.user.findUnique({ where: { email } });
+      const user = await this.prisma.user.findUnique({ where: { email } });
+      if (!user) {
+        throw new NotFoundException(`User with email ${email} not found`);
+      }
+      return user;
     } catch (error) {
-      throw new HttpException(
-        'Error fetching user by email',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error fetching user by email');
     }
   }
 
   async getUserByCognitoId(cognitoId: string) {
     try {
-      return await this.prisma.user.findUnique({ where: { cognitoId } });
+      const user = await this.prisma.user.findUnique({ where: { cognitoId } });
+      if (!user) {
+        throw new NotFoundException(
+          `User with Cognito ID ${cognitoId} not found`,
+        );
+      }
+      return user;
     } catch (error) {
-      throw new HttpException(
+      throw new InternalServerErrorException(
         'Error fetching user by Cognito ID',
-        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -70,10 +88,7 @@ export class UserService {
     try {
       return await this.prisma.user.findMany();
     } catch (error) {
-      throw new HttpException(
-        'Error fetching users',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error fetching users');
     }
   }
 
@@ -82,15 +97,22 @@ export class UserService {
     data: { email?: string; userName?: string; role?: 'ADMIN' | 'USER' },
   ) {
     try {
-      return await this.prisma.user.update({
+      const updatedUser = await this.prisma.user.update({
         where: { id },
         data,
       });
+      if (!updatedUser) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      return updatedUser;
     } catch (error) {
-      throw new HttpException(
-        'Error updating user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      throw new InternalServerErrorException('Error updating user');
     }
   }
 
@@ -98,10 +120,13 @@ export class UserService {
     try {
       return await this.prisma.user.delete({ where: { id } });
     } catch (error) {
-      throw new HttpException(
-        'Error deleting user',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`User with ID ${id} not found`);
+      }
+      throw new InternalServerErrorException('Error deleting user');
     }
   }
 
@@ -134,10 +159,7 @@ export class UserService {
         },
       });
     } catch (error) {
-      throw new HttpException(
-        'Error updating cart',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error updating cart');
     }
   }
 
@@ -152,10 +174,15 @@ export class UserService {
         },
       });
     } catch (error) {
-      throw new HttpException(
-        'Error removing item from cart',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(
+          `Cart item for user ${userId} and product ${productId} not found`,
+        );
+      }
+      throw new InternalServerErrorException('Error removing item from cart');
     }
   }
 
@@ -166,10 +193,7 @@ export class UserService {
         include: { product: true },
       });
     } catch (error) {
-      throw new HttpException(
-        'Error fetching cart',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error fetching cart');
     }
   }
 
@@ -196,10 +220,7 @@ export class UserService {
         },
       });
     } catch (error) {
-      throw new HttpException(
-        'Error updating wishlist',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error updating wishlist');
     }
   }
 
@@ -214,9 +235,16 @@ export class UserService {
         },
       });
     } catch (error) {
-      throw new HttpException(
+      if (
+        error instanceof PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(
+          `Wishlist item for user ${userId} and product ${productId} not found`,
+        );
+      }
+      throw new InternalServerErrorException(
         'Error removing item from wishlist',
-        HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
   }
@@ -228,10 +256,7 @@ export class UserService {
         include: { product: true },
       });
     } catch (error) {
-      throw new HttpException(
-        'Error fetching wishlist',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Error fetching wishlist');
     }
   }
 }

@@ -10,7 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ProductsService } from './product.service';
+import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import {
@@ -20,9 +20,9 @@ import {
   ApiBearerAuth,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Role } from 'src/decorators/role.enum';
-import { Roles } from 'src/decorators/roles.decorator';
-import { RolesGuard } from 'src/auth/roles.guard';
+import { Role } from '../decorators/role.enum';
+import { Roles } from '../decorators/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 
 @ApiTags('products')
 @Controller('products')
@@ -42,7 +42,6 @@ export class ProductsController {
     console.log('Received product data:', JSON.stringify(createProductDto));
     return this.productsService.create(createProductDto);
   }
-
 
   @Get()
   @ApiOperation({ summary: 'Obtener todos los productos' })

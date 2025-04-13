@@ -1,9 +1,7 @@
-//backend\src\wishlist\wishlist.controller.ts
-
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// backend/src/wishlist/wishlist.controller.ts
+
 import {
   Controller,
   Get,
@@ -15,6 +13,7 @@ import {
   Req,
   HttpException,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { WishlistService } from './wishlist.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -23,6 +22,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { WishlistItemDto } from './dto/wishlist-item.dto';
 
@@ -33,9 +33,35 @@ import { WishlistItemDto } from './dto/wishlist-item.dto';
 export class WishlistController {
   constructor(private readonly wishlistService: WishlistService) {}
 
-  @Post('add')
-  @ApiOperation({ summary: 'Añadir producto a la lista de deseos' })
-  @ApiResponse({ status: 201, description: 'Producto añadido exitosamente' })
+  @Get()
+  @ApiOperation({
+    summary: 'Get user wishlist or check if product is in wishlist',
+  })
+  @ApiResponse({ status: 200, description: 'Wishlist successfully retrieved' })
+  @ApiQuery({
+    name: 'productId',
+    required: false,
+    description: 'Product ID to check in wishlist',
+  })
+  async getWishlist(@Req() req: any, @Query('productId') productId?: string) {
+    try {
+      const userId = req.user.sub;
+
+      // If productId is provided, check if it's in the wishlist
+      if (productId) {
+        return await this.wishlistService.isInWishlist(userId, productId);
+      }
+
+      // Otherwise, return the entire wishlist
+      return await this.wishlistService.getWishlist(userId);
+    } catch (error) {
+      this.handleError(error, 'retrieving the wishlist');
+    }
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Add product to wishlist' })
+  @ApiResponse({ status: 201, description: 'Product successfully added' })
   async addToWishlist(
     @Req() req: any,
     @Body() wishlistItemDto: WishlistItemDto,
@@ -44,87 +70,48 @@ export class WishlistController {
       const userId = req.user.sub;
       return await this.wishlistService.addToWishlist(
         userId,
-        wishlistItemDto.productName,
+        wishlistItemDto.productId,
       );
     } catch (error) {
-      throw new HttpException(
-        'Error al añadir a la lista de deseos',
-        HttpStatus.BAD_REQUEST,
-      );
+      this.handleError(error, 'adding the product to the wishlist');
     }
   }
 
-  @Get()
-  @ApiOperation({ summary: 'Obtener lista de deseos del usuario' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de deseos obtenida exitosamente',
-  })
-  async getWishlist(@Req() req: any) {
-    try {
-      const userId = req.user.sub;
-      return await this.wishlistService.getWishlist(userId);
-    } catch (error) {
-      throw new HttpException(
-        'Error al obtener la lista de deseos',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Delete('remove/:productName')
-  @ApiOperation({ summary: 'Eliminar producto de la lista de deseos' })
-  @ApiResponse({ status: 200, description: 'Producto eliminado exitosamente' })
+  @Delete(':productId')
+  @ApiOperation({ summary: 'Remove product from wishlist' })
+  @ApiResponse({ status: 200, description: 'Product successfully removed' })
   async removeFromWishlist(
     @Req() req: any,
-    @Param('productName') productName: string,
+    @Param('productId') productId: string,
   ) {
     try {
       const userId = req.user.sub;
-      return await this.wishlistService.removeFromWishlist(userId, productName);
+      return await this.wishlistService.removeFromWishlist(userId, productId);
     } catch (error) {
-      throw new HttpException(
-        'Error al eliminar de la lista de deseos',
-        HttpStatus.BAD_REQUEST,
-      );
+      this.handleError(error, 'removing the product from the wishlist');
     }
   }
 
-  @Get('check/:productName')
-  @ApiOperation({
-    summary: 'Verificar si un producto está en la lista de deseos',
-  })
-  @ApiResponse({ status: 200, description: 'Verificación exitosa' })
-  async checkInWishlist(
-    @Req() req: any,
-    @Param('productName') productName: string,
-  ) {
-    try {
-      const userId = req.user.sub;
-      return await this.wishlistService.isInWishlist(userId, productName);
-    } catch (error) {
-      throw new HttpException(
-        'Error al verificar producto',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
-  }
-
-  @Delete('clear')
-  @ApiOperation({ summary: 'Vaciar la lista de deseos' })
-  @ApiResponse({
-    status: 200,
-    description: 'Lista de deseos vaciada exitosamente',
-  })
+  @Delete()
+  @ApiOperation({ summary: 'Clear the wishlist' })
+  @ApiResponse({ status: 200, description: 'Wishlist successfully cleared' })
   async clearWishlist(@Req() req: any) {
     try {
       const userId = req.user.sub;
       return await this.wishlistService.clearWishlist(userId);
     } catch (error) {
-      throw new HttpException(
-        'Error al vaciar la lista de deseos',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      this.handleError(error, 'clearing the wishlist');
     }
+  }
+
+  // Helper method for consistent error handling
+  private handleError(error: any, operation: string): never {
+    if (error.status && error.message) {
+      throw new HttpException(error.message, error.status);
+    }
+    throw new HttpException(
+      `An error occurred while ${operation}`,
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
   }
 }
